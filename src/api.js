@@ -11,5 +11,5 @@ const api = {
   addURL: 'https://api.congrea.net/t/addURL',
   GetDocumentStatus: 'https://api.congrea.net/t/GetDocumentStatus',
   recordingFiles: 'https://api.congrea.net/data/recording-files',
-
+  poll: 'https://api.congrea.net/t/poll'
 };
