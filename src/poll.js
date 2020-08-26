@@ -155,8 +155,38 @@
         poll.push(obj);
         this.interfaceToFetchList(obj.category);
       },
-      interfaceToFetchList(category) {
+      /**
+       *
+       * Fetches a list of polls for the current congrea room
+       */
+      interfaceToFetchList() {
         const that = this;
+        const url = virtualclass.api.poll + "/read";
+        virtualclass.xhrn.vxhrn.get(url)
+          .then(({data}) => {
+            if (data.statusCode !== 200) throw new Error('Request failed!')
+            const rawPollList = JSON.parse(data.body)
+            // TODO HANDLE ->
+            // isPublished
+            // creatorfname
+            // creatorname
+            const pollList = rawPollList.map(poll => {
+              return {
+                questionid: poll.sk.split("_POLL_")[1],
+                createdby: poll.teacher_id,
+                options: poll.poll_data.options,
+                questiontext: poll.poll_data.question
+              }
+            })
+            that.coursePoll = pollList;
+            that.displaycoursePollList();
+            console.log(pollList)
+          })
+          .catch(e => {
+          console.log('Request failed  with error:', e)
+        })
+        // TODO handle case in line 299
+        return
         const formData = new FormData();
         formData.append('category', JSON.stringify(category));
         formData.append('user', virtualclass.gObj.uid);
@@ -173,6 +203,7 @@
               // console.log(`getContent ${getContent[i]}`);
             }
           }
+          console.log(getContent)
           // console.log(getContent);
           const isAdmin = getContent.pop();
           if (JSON.parse(category)) {
@@ -583,6 +614,7 @@
 
           mszbox = document.querySelector('#mszBoxPoll');
           mszbox.style.display = 'none';
+          console.log(this.coursePoll)
           this.coursePoll.forEach((item, index) => {
             that.forEachPoll(item, index, 'course');
           });
