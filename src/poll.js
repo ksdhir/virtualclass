@@ -10,6 +10,7 @@
 
   var poll = function () {
     return {
+      // array of poll list
       coursePoll: [],
       sitePoll: [],
       setting: {
@@ -18,8 +19,10 @@
         time: {},
       },
       uid: 0,
+      // ? WHY IS THIS USED?
       currQid: 0,
       currOption: {},
+      
       dataToStd: {},
       count: {},
       save: 0,
@@ -51,21 +54,59 @@
           this.interfaceToFetchList(this.cmid);
         }
       },
-
-      /*
+      create_UUID() {
+        var dt = new Date().getTime();
+        var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          var r = (dt + Math.random() * 16) % 16 | 0;
+          dt = Math.floor(dt / 16);
+          return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+        return uuid;
+      },
+      /**
        *
        * @param {object} create poll data
        * @param {type} category
        * @response text  {object}
-       * poll interface to save poll in moodle database
+       * poll interface to save poll in DynamoDB
        */
       interfaceToSave(data) {
         const that = this;
+
+        const url = virtualclass.api.poll + "/create";
+        
+        // prepare poll data for DynamoDB
+        const poll_data = {
+          "pollUUID": that.create_UUID(),
+          "pollData": {
+            "question": data.question,
+            "options": data.options.reduce((accumulator, currentValue, idx) => {
+              accumulator[idx + 1] = currentValue;
+              return accumulator;
+            }, {})
+          },
+          "teacherID": virtualclass.gObj.uid,
+          "teacherName": virtualclass.gObj.uName
+        }
+
+
+        virtualclass.xhrn.vxhrn.post(url, poll_data)
+          .then(x => {
+            console.log("request passed")
+            // run the command to load the list
+            // TODO
+            that.updatePollList()
+          })
+          .catch(e => console.log('Request failed with error ', e))
+        
+        return
+
         const formData = new FormData();
         formData.append('dataToSave', JSON.stringify(data));
         formData.append('user', virtualclass.gObj.uid);
         // TODO Handle more situations
         virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_save`, formData).then((msg) => {
+          console.log(msg)
           const getContent = msg.data;
           const { options } = getContent;
           const obj = {};
@@ -78,12 +119,14 @@
           });
           //                    virtualclass.poll.currQid = getContent.qid;
           //                    virtualclass.poll.currOption = optObj;
-
+          // TODO handle this ->
           if (!getContent.copied) {
             that.updatePollList(getContent);
-            that.currQid = getContent.qid;
-            that.currOption = optObj;
+            // that.currQid = getContent.qid;
+            // that.currOption = optObj;
           } else {
+            alert('hello world')
+            debugger
             getContent.options = optObj;
             obj.questionid = getContent.qid;
             obj.category = getContent.category;
@@ -132,6 +175,8 @@
        * poll list is updated
        */
       updatePollList(content) {
+        this.interfaceToFetchList();
+        return
         const { options } = content;
         const obj = {};
         const optObj = {};
@@ -148,12 +193,13 @@
         obj.creatorname = content.creatorname;
         obj.options = optObj;
 
+        // ? WHY DO WE NEED THIS
         this.currQid = content.qid;
         this.currOption = optObj;
 
         const poll = (obj.category) ? this.coursePoll : this.sitePoll;
         poll.push(obj);
-        this.interfaceToFetchList(obj.category);
+        // this.interfaceToFetchList(obj.category);
       },
       /**
        *
@@ -166,18 +212,32 @@
           .then(({data}) => {
             if (data.statusCode !== 200) throw new Error('Request failed!')
             const rawPollList = JSON.parse(data.body)
+            
             // TODO HANDLE ->
             // isPublished
             // creatorfname
-            // creatorname
             const pollList = rawPollList.map(poll => {
               return {
                 questionid: poll.sk.split("_POLL_")[1],
                 createdby: poll.teacher_id,
                 options: poll.poll_data.options,
-                questiontext: poll.poll_data.question
+                questiontext: poll.poll_data.question,
+                creatorname: poll.teacher_name,
+                timecreated: poll.timecreated || poll.timeupdated
               }
             })
+            // sort list using timestamp
+            function compare(pollA, pollB) {
+              let comparison = 0;
+              if (pollA.timecreated > pollB.timecreated) {
+                comparison = 1
+              } else if (pollA.timecreated < pollB.timecreated) {
+                comparison = -1
+              }
+              return comparison              
+            }
+            pollList.sort(compare)
+
             that.coursePoll = pollList;
             that.displaycoursePollList();
             console.log(pollList)
@@ -948,7 +1008,12 @@
       hideModal() {
         virtualclass.modal.removeModal();
       },
-
+      /**
+       * 
+       * @param {*} index 
+       * @param {*} pollType
+       * prepares data to save a new poll 
+       */
       newPollSave(index, pollType) {
         let category = 0;
         const item = {};
