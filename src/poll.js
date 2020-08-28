@@ -278,8 +278,27 @@
             console.error('Request failed with error ', error);
           });
       },
-      interfaceToDelete(qid) {
+      /**
+       * 
+       * @param {string} pollUUID 
+       * calls the api to delete poll by uuid
+       */
+      interfaceToDelete(pollUUID) {
         const that = this;
+
+        // * delete poll
+        const url = virtualclass.api.poll + "/delete";
+        const data_1 = {
+          "pollUUID": pollUUID
+        }
+        virtualclass.xhrn.vxhrn.post(url, data_1)
+          .then(({data}) => {
+            if (data.statusCode != 200) throw new Error('failed!')
+            that.interfaceToFetchList(getContent);
+        })
+          .catch(e => console.log(e))
+
+        return
         const formData = new FormData();
         formData.append('qid', JSON.stringify(qid));
         formData.append('user', virtualclass.gObj.uid);
@@ -1287,8 +1306,11 @@
           let poll = pollType === 'course' ? virtualclass.poll.coursePoll[index] : virtualclass.poll.sitePoll[index];
           const qid = poll.questionid;
           poll = pollType === 'course' ? virtualclass.poll.coursePoll : virtualclass.poll.sitePoll;
+          const pollUUID = poll[index].questionid;
           poll.splice(index, 1);
-          virtualclass.poll.interfaceToDelete(qid);
+          // TODO poll is removed from browser before hitting the api
+          // ! what if the api fails?
+          virtualclass.poll.interfaceToDelete(pollUUID);
         }
       },
 
