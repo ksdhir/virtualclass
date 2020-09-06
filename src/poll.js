@@ -6,13 +6,14 @@
 
  */
 (function (window) {
-  'use strtic';
+  "use strict";
 
-  var poll = function () {
+  const poll = function () {
     return {
-      // array of poll list
-      coursePoll: [],
+      // default variables
+      currentPollType: "room",
       sitePoll: [],
+      coursePoll: [],      
       setting: {
         showResult: true,
         timer: true,
@@ -35,23 +36,26 @@
       // exportfilepath: window.exportfilepath,
       uniqueUsers: [],
       init() {
+        // empty and set variables
         this.pollState = {};
         virtualclass.previrtualclass = 'virtualclassPoll';
         virtualclass.previous = virtualclass.previrtualclass;
         // const urlquery = virtualclass.vutil.getUrlVars(exportfilepath);
-        const urlquery = virtualclass.vutil.getUrlVars(window.webapi);
-        this.cmid = urlquery.cmid;
+        // const urlquery = virtualclass.vutil.getUrlVars(window.webapi);
+        // this.cmid = urlquery.cmid;
         if (this.timer) {
           clearInterval(this.timer);
         }
+
+        // render UI
         if (roles.isStudent()) {
           this.UI.defaultLayoutForStudent();
         } else {
           this.UI.container();
           ioAdapter.mustSend({ poll: { pollMsg: 'init' }, cf: 'poll' });
-        }
-        if (!virtualclass.isPlayMode && roles.hasControls()) {
-          this.interfaceToFetchList(this.cmid);
+          if (!virtualclass.isPlayMode && roles.hasControls()) {
+            this.interfaceToFetchList();
+          }
         }
       },
       create_UUID() {
@@ -71,13 +75,11 @@
        * poll interface to save poll in DynamoDB
        */
       interfaceToSave(data) {
-        const that = this;
-
         const url = virtualclass.api.poll + "/create";
         
         // prepare poll data for DynamoDB
         const poll_data = {
-          "pollUUID": that.create_UUID(),
+          "pollUUID": this.create_UUID(),
           "pollData": {
             "question": data.question,
             "options": data.options.reduce((accumulator, currentValue, idx) => {
@@ -89,62 +91,59 @@
           "teacherName": virtualclass.gObj.uName
         }
 
-
         virtualclass.xhrn.vxhrn.post(url, poll_data)
           .then(x => {
             console.log("request passed")
             // run the command to load the list
-            // TODO
-            that.updatePollList()
+            // TODO fix this
+            this.updatePollList()
           })
           .catch(e => console.log('Request failed with error ', e))
-        
-        return
 
-        const formData = new FormData();
-        formData.append('dataToSave', JSON.stringify(data));
-        formData.append('user', virtualclass.gObj.uid);
-        // TODO Handle more situations
-        virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_save`, formData).then((msg) => {
-          console.log(msg)
-          const getContent = msg.data;
-          const { options } = getContent;
-          const obj = {};
-          const optObj = {};
-          options.forEach((obj) => {
-            const temp = {};
-            temp.id = obj.optid;
-            temp.options = obj.options;
-            optObj[obj.optid] = temp.options;
-          });
-          //                    virtualclass.poll.currQid = getContent.qid;
-          //                    virtualclass.poll.currOption = optObj;
-          // TODO handle this ->
-          if (!getContent.copied) {
-            that.updatePollList(getContent);
-            // that.currQid = getContent.qid;
-            // that.currOption = optObj;
-          } else {
-            alert('hello world')
-            debugger
-            getContent.options = optObj;
-            obj.questionid = getContent.qid;
-            obj.category = getContent.category;
-            obj.createdby = getContent.createdby;
-            obj.questiontext = getContent.question;
-            obj.creatorname = getContent.creatorname;
-            obj.options = getContent.options;
-            that.publishPoll(obj);
-            that.interfaceToFetchList(obj.category);
-            that.currQid = getContent.qid;
-            that.currOption = optObj;
-          }
-        })
-          .catch((error) => {
-            console.error('Request failed with error ', error);
-          });
+        // const formData = new FormData();
+        // formData.append('dataToSave', JSON.stringify(data));
+        // formData.append('user', virtualclass.gObj.uid);
+        // // TODO Handle more situations
+        // virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_save`, formData).then((msg) => {
+        //   console.log(msg)
+        //   const getContent = msg.data;
+        //   const { options } = getContent;
+        //   const obj = {};
+        //   const optObj = {};
+        //   options.forEach((obj) => {
+        //     const temp = {};
+        //     temp.id = obj.optid;
+        //     temp.options = obj.options;
+        //     optObj[obj.optid] = temp.options;
+        //   });
+        //   //                    virtualclass.poll.currQid = getContent.qid;
+        //   //                    virtualclass.poll.currOption = optObj;
+        //   // TODO handle this ->
+        //   if (!getContent.copied) {
+        //     that.updatePollList(getContent);
+        //     // that.currQid = getContent.qid;
+        //     // that.currOption = optObj;
+        //   } else {
+        //     alert('hello world')
+        //     debugger
+        //     getContent.options = optObj;
+        //     obj.questionid = getContent.qid;
+        //     obj.category = getContent.category;
+        //     obj.createdby = getContent.createdby;
+        //     obj.questiontext = getContent.question;
+        //     obj.creatorname = getContent.creatorname;
+        //     obj.options = getContent.options;
+        //     that.publishPoll(obj);
+        //     that.interfaceToFetchList(obj.category);
+        //     that.currQid = getContent.qid;
+        //     that.currOption = optObj;
+        //   }
+        // })
+        //   .catch((error) => {
+        //     console.error('Request failed with error ', error);
+        //   });
       },
-      /*
+      /**
        *
        * @param {object}  edited poll data
        *
@@ -168,15 +167,14 @@
           });
       },
 
-      /*
+      /**
        *
        * @param {object} new created poll or updated poll  with ids returned from database
        *
        * poll list is updated
        */
       updatePollList(content) {
-        this.interfaceToFetchList();
-        return
+        alert('updatePollList')
         const { options } = content;
         const obj = {};
         const optObj = {};
@@ -206,13 +204,13 @@
        * Fetches a list of polls for the current congrea room
        */
       interfaceToFetchList() {
-        const that = this;
-        const url = virtualclass.api.poll + "/read";
+        // prepare url
+        const currentPollType = this.currentPollType
+        const url = virtualclass.api.poll + `/read?type=${currentPollType}`;
         virtualclass.xhrn.vxhrn.get(url)
-          .then(({data}) => {
+          .then(({ data }) => {
             if (data.statusCode !== 200) throw new Error('Request failed!')
             const rawPollList = JSON.parse(data.body)
-            
             // TODO HANDLE ->
             // isPublished
             // creatorfname
@@ -237,46 +235,22 @@
               return comparison              
             }
             pollList.sort(compare)
-
-            that.coursePoll = pollList;
-            that.displaycoursePollList();
-            console.log(pollList)
+            return pollList
+          })
+          .then(pollList => {
+            // Todo isAdmin pending
+            // save and display poll
+            if (currentPollType === "site") {
+              this.sitePoll = pollList
+              this.displaysitePollList()
+            } else {
+              this.coursePoll = pollList
+              this.displaycoursePollList()
+            };
           })
           .catch(e => {
           console.log('Request failed  with error:', e)
         })
-        // TODO handle case in line 299
-        return
-        const formData = new FormData();
-        formData.append('category', JSON.stringify(category));
-        formData.append('user', virtualclass.gObj.uid);
-        virtualclass.recorder.items = []; // empty on each chunk sent
-        // TODO Handle more situations
-        virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_data_retrieve`, formData).then((msg) => {
-          // console.log("fetched" + msg);
-          //  later in php file
-          const getContent = msg.data;
-          for (let i = 0; i <= getContent.length - 1; i++) {
-            const { options } = getContent[i];
-            for (const j in options) {
-              getContent[i].options[j] = options[j].options;
-              // console.log(`getContent ${getContent[i]}`);
-            }
-          }
-          console.log(getContent)
-          // console.log(getContent);
-          const isAdmin = getContent.pop();
-          if (JSON.parse(category)) {
-            that.coursePoll = getContent;
-            that.displaycoursePollList();
-          } else {
-            that.sitePoll = getContent;
-            that.displaysitePollList(isAdmin);
-          }
-        })
-          .catch((error) => {
-            console.error('Request failed with error ', error);
-          });
       },
       /**
        * 
@@ -284,33 +258,18 @@
        * calls the api to delete poll by uuid
        */
       interfaceToDelete(pollUUID) {
-        const that = this;
-
         // * delete poll
         const url = virtualclass.api.poll + "/delete";
-        const data_1 = {
+        const data = {
           "pollUUID": pollUUID
         }
-        virtualclass.xhrn.vxhrn.post(url, data_1)
+        virtualclass.xhrn.vxhrn.post(url, data)
           .then(({data}) => {
             if (data.statusCode != 200) throw new Error('failed!')
-            that.interfaceToFetchList(getContent);
+            // TODO fix this
+            this.interfaceToFetchList();
         })
           .catch(e => console.log(e))
-
-        return
-        const formData = new FormData();
-        formData.append('qid', JSON.stringify(qid));
-        formData.append('user', virtualclass.gObj.uid);
-        virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_delete`, formData).then((msg) => {
-          const getContent = msg.data;
-          if (msg.data && msg.data !== '') {
-            that.interfaceToFetchList(getContent);
-          }
-        })
-          .catch((error) => {
-            console.error('Request failed with error ', error);
-          });
       },
       interfaceToDelOption(optionId) {
         const formData = new FormData();
@@ -411,6 +370,8 @@
 
       // timer to..
       loadTeacherScrn(storedData) {
+        alert('loadteacherscrn')
+        return
         // console.log('currentscreenpublish');
         storedData.data.view = storedData.data.view || 'bar';
         this.dataToStd.question = storedData.data.question;
@@ -693,7 +654,6 @@
 
           mszbox = document.querySelector('#mszBoxPoll');
           mszbox.style.display = 'none';
-          console.log(this.coursePoll)
           this.coursePoll.forEach((item, index) => {
             that.forEachPoll(item, index, 'course');
           });
@@ -1100,6 +1060,12 @@
         }
         return 1;
       },
+      /**
+       * 
+       * @param {*} index 
+       * @param {*} type 
+       * prepares data to save and publish new poll
+       */
       saveNdPublish(index, type) {
         const flagSatus = virtualclass.poll.isBlank();
         if (!flagSatus) {
@@ -1404,6 +1370,8 @@
       },
 
       stdPublish() {
+        alert('published')
+        return
         // console.log('====> Poll publish 2');
         virtualclass.poll.pollState.data = virtualclass.poll.dataRec;
         virtualclass.poll.pollState.timer = virtualclass.poll.newUserTime;
@@ -2416,6 +2384,9 @@
          * Creates container for the poll and appends the container before audio widget
          */
         container() {
+          // alert('container')
+          // alert(this.id);
+          // return
           const pollCont = document.getElementById(this.id);
           if (pollCont != null) {
             pollCont.parentNode.removeChild(pollCont);
@@ -2428,13 +2399,16 @@
           if (roles.hasAdmin()) {
             const coursePollNav = document.querySelector('#coursePollTab');
             const sitePollNav = document.querySelector('#sitePollTab');
+            // poll types event handlers
             sitePollNav.addEventListener('click', () => {
               const category = 0;
               coursePollNav.classList.remove('active');
               sitePollNav.classList.add('active');
               sitePollNav.style.pointerEvents = 'none';
               coursePollNav.style.pointerEvents = 'visible';
-              virtualclass.poll.interfaceToFetchList(category);
+              // set type and fetch poll
+              virtualclass.poll.currentPollType = "site";
+              virtualclass.poll.interfaceToFetchList();
             });
 
             coursePollNav.addEventListener('click', () => {
@@ -2442,7 +2416,9 @@
               coursePollNav.classList.add('active');
               coursePollNav.style.pointerEvents = 'none';
               sitePollNav.style.pointerEvents = 'visible';
-              virtualclass.poll.interfaceToFetchList(virtualclass.poll.cmid);
+              // set type and fetch poll
+              virtualclass.poll.currentPollType = "room";
+              virtualclass.poll.interfaceToFetchList();
             });
           } else {
             const resultNav = document.querySelector('#virtualclassCont.congrea.student #navigator #pollResult');
