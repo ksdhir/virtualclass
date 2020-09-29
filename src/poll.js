@@ -777,7 +777,11 @@
         //   this.UI.layout2('layoutPollBody', pollType);
         // }
       },
-      dispNewPollBtn(pollType, isAdmin) {
+      dispNewPollBtn(pollType, isAdm) {
+        
+        // TODO ugly hack fix later -> allows Teachers+Admins to create site Poll
+        const isAdmin = 'true'
+
         this.attachEvent(`newPollBtn${pollType}`, 'click', this.newPollHandler, pollType);
         const btn = document.getElementById(`newPollBtn${pollType}`);
         let siteHead;
@@ -809,7 +813,19 @@
           }
         }
       },
-      forEachPoll(item, index, pollType, isAdmin) {
+      /**
+       * 
+       * @param {*} item 
+       * @param {*} index 
+       * @param {*} pollType 
+       * @param {*} isAdm 
+       * Handles creation of each poll in a list and adds button events based on user
+       */
+      forEachPoll(item, index, pollType, isAdm) {
+        
+        // TODO ugly hack fix later -> allows Teachers+Admins to create site Poll
+        const isAdmin = 'true'
+
         const pollQn = {};
         let link1;
         pollQn.questiontext = item.questiontext;
