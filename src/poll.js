@@ -273,7 +273,7 @@
        * @param {string} pollUUID 
        * calls the api to delete poll by uuid
        */
-      interfaceToDelete(pollUUID) {
+      interfaceToDelete(pollUUID, pollIdx, pollType) {
         // * delete poll
         const url = virtualclass.api.poll + "/delete";
         const data = {
@@ -282,10 +282,24 @@
         virtualclass.xhrn.vxhrn.post(url, data)
           .then(({data}) => {
             if (data.statusCode != 200) throw new Error('failed!')
-            // TODO fix this
-            this.interfaceToFetchList();
+            this.deleteFromPollList(pollIdx, pollType)
         })
           .catch(e => console.log(e))
+      },
+      /**
+       * 
+       * @param {*} pollIdx 
+       * @param {*} pollType 
+       * used in interfaceToDelete()
+       */
+      deleteFromPollList(pollIdx, pollType) {
+        if (pollType == 'course') {
+          this.coursePoll.splice(pollIdx,1)
+          this.displaycoursePollList()
+        } else {
+          this.sitePoll.splice(pollIdx, 1)
+          this.displaysitePollList()
+        }
       },
       interfaceToDelOption(optionId) {
         const formData = new FormData();
@@ -1258,7 +1272,7 @@
           notify[0].parentNode.removeChild(notify[0]);
         }
         const message = virtualclass.lang.getString('pollDel');
-        virtualclass.popup.confirmInput(message, virtualclass.poll.askConfirm, pollType, index);
+        virtualclass.popup.confirmInput(message, virtualclass.poll.confirmDelete, pollType, index);
       },
 
       showMsg(contId, msg, type) {
@@ -1286,20 +1300,26 @@
         // });
 
       },
-      askConfirm(opted, pollType, index) {
+      /**
+       * 
+       * @param {*} opted 
+       * @param {*} pollType 
+       * @param {*} index 
+       * confirm poll delete
+       */
+      confirmDelete(opted, pollType, pollIdx) {
         if (opted) {
-          const cont = document.getElementById(`contQn${pollType}${index}`);
-          cont.parentNode.removeChild(cont);
+
+          // const cont = document.getElementById(`contQn${pollType}${index}`);
+          // console.log(cont)
+          // cont.parentNode.removeChild(cont);
+          
+          // TODO - fix this - doesn't seem to work
           const msg = virtualclass.lang.getString('Pdsuccess');
           virtualclass.poll.showMsg('mszBoxPoll', msg, 'alert-success');
-          let poll = pollType === 'course' ? virtualclass.poll.coursePoll[index] : virtualclass.poll.sitePoll[index];
-          const qid = poll.questionid;
-          poll = pollType === 'course' ? virtualclass.poll.coursePoll : virtualclass.poll.sitePoll;
-          const pollUUID = poll[index].questionid;
-          poll.splice(index, 1);
-          // TODO poll is removed from browser before hitting the api
-          // ! what if the api fails?
-          virtualclass.poll.interfaceToDelete(pollUUID);
+
+          const pollUUID = (pollType === 'course') ? virtualclass.poll.coursePoll[pollIdx].questionid : virtualclass.poll.sitePoll[pollIdx].questionid;
+          virtualclass.poll.interfaceToDelete(pollUUID, pollIdx, pollType);
         }
       },
 
