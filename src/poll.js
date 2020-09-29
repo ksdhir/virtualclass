@@ -3,7 +3,6 @@
  * @author  Nirmala Mehta <http://www.vidyamantra.com>
  * This file is responsible for poll creating ,publishing,result display
  * saving polls in database and retrieving .
-
  */
 (function (window) {
   "use strict";
@@ -69,138 +68,6 @@
       },
       /**
        *
-       * @param {object} create poll data
-       * @param {type} category
-       * @response text  {object}
-       * poll interface to save poll in DynamoDB
-       */
-      interfaceToSave(data) {
-        const url = virtualclass.api.poll + "/create";
-        
-        // prepare poll data for DynamoDB
-        const poll_data = {
-          "pollUUID": this.create_UUID(),
-          "pollData": {
-            "question": data.question,
-            "options": data.options.reduce((accumulator, currentValue, idx) => {
-              accumulator[idx + 1] = currentValue;
-              return accumulator;
-            }, {})
-          },
-          "teacherID": virtualclass.gObj.uid,
-          "teacherName": virtualclass.gObj.uName
-        }
-
-        virtualclass.xhrn.vxhrn.post(url, poll_data)
-          .then(x => {
-            console.log("request passed")
-            // run the command to load the list
-            // TODO fix this
-            this.updatePollList()
-          })
-          .catch(e => console.log('Request failed with error ', e))
-
-        // const formData = new FormData();
-        // formData.append('dataToSave', JSON.stringify(data));
-        // formData.append('user', virtualclass.gObj.uid);
-        // // TODO Handle more situations
-        // virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_save`, formData).then((msg) => {
-        //   console.log(msg)
-        //   const getContent = msg.data;
-        //   const { options } = getContent;
-        //   const obj = {};
-        //   const optObj = {};
-        //   options.forEach((obj) => {
-        //     const temp = {};
-        //     temp.id = obj.optid;
-        //     temp.options = obj.options;
-        //     optObj[obj.optid] = temp.options;
-        //   });
-        //   //                    virtualclass.poll.currQid = getContent.qid;
-        //   //                    virtualclass.poll.currOption = optObj;
-        //   // TODO handle this ->
-        //   if (!getContent.copied) {
-        //     that.updatePollList(getContent);
-        //     // that.currQid = getContent.qid;
-        //     // that.currOption = optObj;
-        //   } else {
-        //     alert('hello world')
-        //     debugger
-        //     getContent.options = optObj;
-        //     obj.questionid = getContent.qid;
-        //     obj.category = getContent.category;
-        //     obj.createdby = getContent.createdby;
-        //     obj.questiontext = getContent.question;
-        //     obj.creatorname = getContent.creatorname;
-        //     obj.options = getContent.options;
-        //     that.publishPoll(obj);
-        //     that.interfaceToFetchList(obj.category);
-        //     that.currQid = getContent.qid;
-        //     that.currOption = optObj;
-        //   }
-        // })
-        //   .catch((error) => {
-        //     console.error('Request failed with error ', error);
-        //   });
-      },
-      /**
-       *
-       * @param {object}  edited poll data
-       *
-       * @response text : updated poll with database ids
-       * poll saved in the database and database poll with new option id is returned
-       accordingly poll list is updated.
-       */
-      interfaceToEdit(data) {
-        const that = this;
-        const formData = new FormData();
-        formData.append('editdata', JSON.stringify(data));
-        formData.append('user', virtualclass.gObj.uid);
-        // TODO Handle more situations
-        virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_update`, formData).then((msg) => {
-          const getContent = msg.data;
-          // console.log(getContent);
-          that.updatePollList(getContent);
-        })
-          .catch((error) => {
-            console.error('Request failed with error ', error);
-          });
-      },
-
-      /**
-       *
-       * @param {object} new created poll or updated poll  with ids returned from database
-       *
-       * poll list is updated
-       */
-      updatePollList(content) {
-        alert('updatePollList')
-        const { options } = content;
-        const obj = {};
-        const optObj = {};
-
-        options.forEach((ob) => {
-          const temp = {};
-          temp.id = ob.id;
-          optObj[ob.id] = ob.options;
-        });
-        obj.questionid = content.qid;
-        obj.category = content.category;
-        obj.createdby = content.createdby;
-        obj.questiontext = content.question;
-        obj.creatorname = content.creatorname;
-        obj.options = optObj;
-
-        // ? WHY DO WE NEED THIS
-        this.currQid = content.qid;
-        this.currOption = optObj;
-
-        const poll = (obj.category) ? this.coursePoll : this.sitePoll;
-        poll.push(obj);
-        // this.interfaceToFetchList(obj.category);
-      },
-      /**
-       *
        * Fetches a list of polls for the current congrea room
        */
       interfaceToFetchList() {
@@ -251,6 +118,155 @@
           .catch(e => {
           console.log('Request failed  with error:', e)
         })
+      },
+      /**
+       *
+       * @param {object} create poll data
+       * @param {type} category
+       * @response text  {object}
+       * poll interface to save poll in DynamoDB
+       */
+      interfaceToSave(data) {
+        const url = virtualclass.api.poll + "/create";
+        
+        // prepare poll data for DynamoDB
+        const poll_data = {
+          "pollType": this.currentPollType,
+          "pollUUID": this.create_UUID(),
+          "pollData": {
+            "question": data.question,
+            "options": data.options.reduce((accumulator, currentValue, idx) => {
+              accumulator[idx + 1] = currentValue;
+              return accumulator;
+            }, {})
+          },
+          "teacherID": virtualclass.gObj.uid,
+          "teacherName": virtualclass.gObj.uName
+        }
+
+        virtualclass.xhrn.vxhrn.post(url, poll_data)
+          .then(x => {
+            alert("Poll Saved")
+            this.addToPollList(poll_data)
+          })
+          .catch(e => console.log('Request failed with error ', e))
+
+        // const formData = new FormData();
+        // formData.append('dataToSave', JSON.stringify(data));
+        // formData.append('user', virtualclass.gObj.uid);
+        // // TODO Handle more situations
+        // virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_save`, formData).then((msg) => {
+        //   console.log(msg)
+        //   const getContent = msg.data;
+        //   const { options } = getContent;
+        //   const obj = {};
+        //   const optObj = {};
+        //   options.forEach((obj) => {
+        //     const temp = {};
+        //     temp.id = obj.optid;
+        //     temp.options = obj.options;
+        //     optObj[obj.optid] = temp.options;
+        //   });
+        //   //                    virtualclass.poll.currQid = getContent.qid;
+        //   //                    virtualclass.poll.currOption = optObj;
+        //   // TODO handle this ->
+        //   if (!getContent.copied) {
+        //     that.addToPollList(getContent);
+        //     // that.currQid = getContent.qid;
+        //     // that.currOption = optObj;
+        //   } else {
+        //     alert('hello world')
+        //     debugger
+        //     getContent.options = optObj;
+        //     obj.questionid = getContent.qid;
+        //     obj.category = getContent.category;
+        //     obj.createdby = getContent.createdby;
+        //     obj.questiontext = getContent.question;
+        //     obj.creatorname = getContent.creatorname;
+        //     obj.options = getContent.options;
+        //     that.publishPoll(obj);
+        //     that.interfaceToFetchList(obj.category);
+        //     that.currQid = getContent.qid;
+        //     that.currOption = optObj;
+        //   }
+        // })
+        //   .catch((error) => {
+        //     console.error('Request failed with error ', error);
+        //   });
+      },
+      /**
+       *
+       * @param {object}  edited poll data
+       *
+       * @response text : updated poll with database ids
+       * poll saved in the database and database poll with new option id is returned
+       accordingly poll list is updated.
+       */
+      interfaceToEdit(data) {
+        const that = this;
+        const formData = new FormData();
+        formData.append('editdata', JSON.stringify(data));
+        formData.append('user', virtualclass.gObj.uid);
+        // TODO Handle more situations
+        virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_update`, formData).then((msg) => {
+          const getContent = msg.data;
+          // console.log(getContent);
+          // TODO -> fix param format/data passed below
+          alert('TODO')
+          that.addToPollList(getContent);
+        })
+          .catch((error) => {
+            console.error('Request failed with error ', error);
+          });
+      },
+
+      /**
+       *
+       * @param {object} new created poll or updated poll  with ids returned from database
+       *
+       * poll list is updated
+       */
+      addToPollList(content) {
+
+        const poll_data = {
+          questionid: content.pollUUID,
+          createdby: content.teacherID,
+          options: content.pollData.options,
+          questiontext: content.pollData.question,
+          creatorname: content.teacherName,
+        };
+
+        // alert('addToPollList')
+        // const { options } = content;
+        // const obj = {};
+        // const optObj = {};
+
+        // options.forEach((ob) => {
+        //   const temp = {};
+        //   temp.id = ob.id;
+        //   optObj[ob.id] = ob.options;
+        // });
+        // obj.questionid = content.qid;
+        // obj.category = content.category;
+        // obj.createdby = content.createdby;
+        // obj.questiontext = content.question;
+        // obj.creatorname = content.creatorname;
+        // obj.options = optObj;
+        
+        // TODO
+        // ? WHY DO WE NEED THIS
+        this.currQid = poll_data.questionid;
+        this.currOption = poll_data.options;
+        
+        
+        // display polls
+        if (content.pollType === "room") {
+          this.coursePoll.push(poll_data);
+          this.displaycoursePollList();
+        } else {
+          this.sitePoll.push(poll_data);
+          this.displaysitePollList();
+        }
       },
       /**
        * 
@@ -912,6 +928,13 @@
       // course poll and site poll
 
       // cmid  later
+      /**
+       * 
+       * @param {*} qIndex 
+       * @param {*} pollType 
+       * @param {*} id
+       * onClick event handler of Save button and used inside saveNdPublish() func 
+       */
       etSave(qIndex, pollType, id) {
         const flagStatus = virtualclass.poll.isBlank();
         if (!flagStatus) {
