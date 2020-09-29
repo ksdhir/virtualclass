@@ -909,19 +909,17 @@
         if (mszbox.childNodes.length > 0) {
           mszbox.childNodes[0].parentNode.removeChild(mszbox.childNodes[0]);
         }
-        const data = {};
-        if (pollType === 'course') {
-          poll = virtualclass.poll.coursePoll[index];
-        } else {
-          poll = virtualclass.poll.sitePoll[index];
+
+        const data = {
+          options: item.options,
+          questiontext: item.questiontext
         }
-        data.options = poll.options;
-        data.questiontext = poll.questiontext;
+
 
         const template = virtualclass.getTemplate('edit-modal', 'poll');
         const bsCont = document.querySelector('#bootstrapCont');
         bsCont.insertAdjacentHTML('beforeend', template({ data }));
-        virtualclass.poll.UI.editPoll(pollType, index);
+        virtualclass.poll.UI.editPoll(data, pollType, index);
         virtualclass.modal.closeModalHandler('editPollModal');
       },
       stdResponse(response, fromUser) {
@@ -1175,6 +1173,7 @@
 
           virtualclass.poll.dataToStd.question = virtualclass.poll[pollType][index].questiontext;
           virtualclass.poll.dataToStd.options = virtualclass.poll[pollType][index].options;
+          // TODO -> Fix this
           const flag = virtualclass.poll.etSave(index, type, setting);
           if (flag) {
             virtualclass.poll.pollSetting(type, index, next);
@@ -2704,18 +2703,24 @@
           const footer = document.getElementById('footerCtrCont');
           footer.parentNode.removeChild(footer);
         },
-        editPoll(pollType, index) {
-          virtualclass.poll.UI.loadContent(pollType, index);
+        editPoll(data, pollType, index) {
+          virtualclass.poll.UI.loadContent(data, pollType, index);
           virtualclass.poll.UI.footerBtns(pollType, index);
         },
-        // this  temp**
-        loadContent(pollType, index) {
-          let opts = [];
+        /**
+         * 
+         * @param {*} data 
+         * @param {*} pollType 
+         * @param {*} index 
+         * loads Poll content to edit modal
+         */
+        loadContent(data, pollType, index) {
+          let opts = data.options;
           const el = document.getElementById('qnTxCont');
 
-          virtualclass.poll.UI.editQn(pollType, index);
-          opts = poll.options;
+          virtualclass.poll.UI.editQn(data, pollType, index);
           let optsCount = 0;
+          // TODO -> options is always object
           if (typeof opts === 'object') {
             for (const i in opts) {
               // console.log(i);
@@ -2739,17 +2744,13 @@
             virtualclass.poll.pollPopUp(virtualclass.poll.popupFn, index, pollType);
           }
         },
-        editQn(pollType, index) {
+        editQn(data, pollType, index) {
           const qn = document.querySelector('#qnTxCont #q');
           if (qn == null) {
             qn.value = document.getElementById(`qnText${pollType}${index}`).innerHTML;
           }
           if (qn != null && !qn.value) {
-            if (pollType === 'course') {
-              qn.value = virtualclass.poll.coursePoll[index].questiontext;
-            } else {
-              qn.value = virtualclass.poll.sitePoll[index].questiontext;
-            }
+            qn.value = data.questiontext
           }
         },
         editOptions(pollType, qIndex, prop, optsCount) {
