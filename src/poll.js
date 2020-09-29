@@ -10,7 +10,7 @@
   const poll = function () {
     return {
       // default variables
-      currentPollType: "room",
+      currentPollType: "course",
       sitePoll: [],
       coursePoll: [],      
       setting: {
@@ -202,22 +202,31 @@
        * poll saved in the database and database poll with new option id is returned
        accordingly poll list is updated.
        */
-      interfaceToEdit(data) {
-        const that = this;
-        const formData = new FormData();
-        formData.append('editdata', JSON.stringify(data));
-        formData.append('user', virtualclass.gObj.uid);
-        // TODO Handle more situations
-        virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_update`, formData).then((msg) => {
-          const getContent = msg.data;
-          // console.log(getContent);
-          // TODO -> fix param format/data passed below
-          alert('TODO')
-          that.addToPollList(getContent);
-        })
-          .catch((error) => {
-            console.error('Request failed with error ', error);
-          });
+      interfaceToEdit(data, pollType, pollIdx) {
+
+        const url = virtualclass.api.poll + "/update";
+
+        const poll_data = {
+          "pollType": pollType,
+          "pollUUID": data.questionid,
+          "pollData": {
+            "question": data.questiontext,
+            "options": data.options
+          },
+          "teacherID": data.createdby,
+          "teacherName": data.creatorname
+        }
+        
+        virtualclass.xhrn.vxhrn.post(url, poll_data)
+          .then(x => {
+            alert("Poll Updated")
+            // remove from list and add in the end
+            const pollList = (pollType === 'course') ? this.coursePoll : this.sitePoll;
+            pollList.splice(pollIdx, 1)
+            this.addToPollList(poll_data)
+          })
+          .catch(e => console.log('Request failed with error ', e))
+        
       },
 
       /**
@@ -227,7 +236,6 @@
        * poll list is updated
        */
       addToPollList(content) {
-
         const poll_data = {
           questionid: content.pollUUID,
           createdby: content.teacherID,
@@ -260,7 +268,7 @@
         
         
         // display polls
-        if (content.pollType === "room") {
+        if (content.pollType === "course") {
           this.coursePoll.push(poll_data);
           this.displaycoursePollList();
         } else {
@@ -963,27 +971,23 @@
        * @param {*} id
        * onClick event handler of Save button and used inside saveNdPublish() func 
        */
-      etSave(qIndex, pollType, id) {
+       etSave(qIndex, pollType, id) {
         const flagStatus = virtualclass.poll.isBlank();
-        if (!flagStatus) {
-          return 0;
-        }
-        const poll = (pollType === 'course') ? virtualclass.poll.coursePoll[qIndex] : virtualclass.poll.sitePoll[qIndex];
-        const category = (pollType === 'course') ? virtualclass.poll.cmid : 0;
-        const qn = document.getElementById('q');
+        if (!flagStatus) return 0;
+
+        const isEdited = (typeof qIndex !== 'undefined')
+
+
+        // hide modal
         const btn = document.getElementById('etSave');
         btn.setAttribute('data-dismiss', 'modal');
 
-        if (typeof qIndex !== 'undefined') {
-          virtualclass.poll.saveQuestion(qn, qIndex, pollType);
-          virtualclass.poll.saveOption(qIndex, pollType);
-          const saveQn = {
-            questionid: poll.questionid,
-            question: poll.questiontext,
-            options: poll.options,
-            createdby: poll.createdby,
-          };
-          virtualclass.poll.interfaceToEdit(saveQn, category);
+        // save edited or new poll
+        if (isEdited) {
+          const originalPoll = (pollType === 'course') ? virtualclass.poll.coursePoll[qIndex] : virtualclass.poll.sitePoll[qIndex];
+          const editedPoll = virtualclass.poll.getEditedPoll(originalPoll)
+
+          virtualclass.poll.interfaceToEdit(editedPoll, pollType, qIndex);
         } else {
           const flag = virtualclass.poll.newPollSave('undefined', pollType);
           if (!flag) {
@@ -999,41 +1003,23 @@
         const message = virtualclass.lang.getString('pclose');
         virtualclass.popup.confirmInput(message, virtualclass.poll.askConfirmClose, 'close', pollType);
       },
-      saveQuestion(elem, qIndex, pollType) {
-        if (pollType === 'course') {
-          this.coursePoll[qIndex].questiontext = elem.value;
-          this.coursePoll[qIndex].creator = wbUser.name;
-        } else {
-          this.sitePoll[qIndex].questiontext = elem.value;
-          this.sitePoll[qIndex].creator = wbUser.name;
-        }
-        // console.log(this.coursePoll);
-        const elem1 = document.getElementById(`qnText${pollType}${qIndex}`);
-        elem1.innerHTML = elem.value;
-      },
-      saveOption(qIndex, pollType) {
-        const temp = [];
-        let j = 0;
-        let t;
-        let i;
-        const poll = (pollType === 'course') ? this.coursePoll[qIndex] : this.sitePoll[qIndex];
-        const optsCont = document.getElementById('optsTxCont');
-        const opts = optsCont.querySelectorAll('#virtualclassCont #optsTxCont .opt');
 
-        for (i = 0; i < opts.length; i++) {
-          temp[i] = opts[i].value;
-        }
-        for (const prop in poll.options) {
-          poll.options[prop] = temp[j];
-          j++;
-        }
-        if (i > j) {
-          j;
-          for (t = j; t < i; t++) {
-            poll.options[`noid${j}`] = temp[j];
-            j++;
-          }
-        }
+      getEditedPoll(originalPoll) {
+        
+        const questionElem = document.getElementById('q');
+        const optionElems = document.querySelector('#optsTxCont').querySelectorAll('#virtualclassCont #optsTxCont .opt');
+
+        return {
+          questionid: originalPoll.questionid,
+          questiontext: questionElem.value,
+          options: [...optionElems].reduce((accumulator, elem, idx) => {
+            accumulator[idx + 1] = elem.value
+            return accumulator;
+          }, {}),
+          createdby: virtualclass.gObj.uid,
+          creatorname: virtualclass.gObj.uName
+        };
+
       },
       hideModal() {
         virtualclass.modal.removeModal();
@@ -2475,7 +2461,7 @@
               coursePollNav.style.pointerEvents = 'none';
               sitePollNav.style.pointerEvents = 'visible';
               // set type and fetch poll
-              virtualclass.poll.currentPollType = "room";
+              virtualclass.poll.currentPollType = "course";
               virtualclass.poll.interfaceToFetchList();
             });
           } else {
