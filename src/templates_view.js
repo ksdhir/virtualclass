@@ -855,7 +855,7 @@ this["JST"]["dest_temp/templates/poll/edit-modal.hbs"] = Handlebars.template({"1
     + alias3((helpers.getString || (depth0 && depth0.getString) || alias2).call(alias1,"Reset",{"name":"getString","hash":{},"data":data}))
     + "<i class=\"icon-reset\"></i></button><button id=\"etSave\" class=\"btn btn-default controls\">"
     + alias3((helpers.getString || (depth0 && depth0.getString) || alias2).call(alias1,"Save",{"name":"getString","hash":{},"data":data}))
-    + "<i class=\"icon-save\"></i></button><button id=\"saveNdPublish\" class=\"btn btn-default controls\">"
+    + "<i class=\"icon-save\"></i></button><button id=\"publishBtnHandler\" class=\"btn btn-default controls\">"
     + alias3((helpers.getString || (depth0 && depth0.getString) || alias2).call(alias1,"Publish",{"name":"getString","hash":{},"data":data}))
     + "<i class=\"icon-publish\"></i></button></div></div></div></div></div>";
 },"useData":true});
@@ -879,9 +879,9 @@ this["JST"]["dest_temp/templates/poll/modal.hbs"] = Handlebars.template({"compil
     + alias3((helpers.getString || (depth0 && depth0.getString) || alias2).call(alias1,"Addoption",{"name":"getString","hash":{},"data":data}))
     + "</a></div></div></div><div id=\"contFooter\" class=\"modal-footer\"><div id=\"footerCtrCont\"><button id=\"reset\" class=\"btn btn-default pull-left controls\" type=\"button\">"
     + alias3((helpers.getString || (depth0 && depth0.getString) || alias2).call(alias1,"Reset",{"name":"getString","hash":{},"data":data}))
-    + "</button><button id=\"etSave\" class=\"btn btn-default controls\">"
+    + "</button><button id=\"newPollSave\" class=\"btn btn-default controls\">"
     + alias3((helpers.getString || (depth0 && depth0.getString) || alias2).call(alias1,"Save",{"name":"getString","hash":{},"data":data}))
-    + "</button><button id=\"saveNdPublish\" class=\"btn btn-default controls\">"
+    + "</button><button id=\"publishBtnHandler\" class=\"btn btn-default controls\">"
     + alias3((helpers.getString || (depth0 && depth0.getString) || alias2).call(alias1,"Publish",{"name":"getString","hash":{},"data":data}))
     + "</button></div></div></div></div></div>";
 },"useData":true});

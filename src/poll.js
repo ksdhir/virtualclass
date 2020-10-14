@@ -102,6 +102,7 @@
               return comparison              
             }
             pollList.sort(compare)
+            console.log(pollList)
             return pollList
           })
           .then(pollList => {
@@ -134,15 +135,18 @@
           "pollType": this.currentPollType,
           "pollUUID": this.create_UUID(),
           "pollData": {
-            "question": data.question,
-            "options": data.options.reduce((accumulator, currentValue, idx) => {
-              accumulator[idx + 1] = currentValue;
-              return accumulator;
-            }, {})
+            "question": data.question || data.questiontext,
+            "options": data.options
           },
           "teacherID": virtualclass.gObj.uid,
           "teacherName": virtualclass.gObj.uName
         }
+
+        /*data.options.reduce((accumulator, currentValue, idx) => {
+              accumulator[idx + 1] = currentValue;
+              return accumulator;
+            }, {})
+        */
 
         virtualclass.xhrn.vxhrn.post(url, poll_data)
           .then(x => {
@@ -321,6 +325,8 @@
           });
       },
       interfaceToSaveResult(data) {
+        alert('pending')
+        return
         const that = this;
         const formData = new FormData();
         formData.append('saveResult', JSON.stringify(data));
@@ -408,8 +414,6 @@
 
       // timer to..
       loadTeacherScrn(storedData) {
-        alert('loadteacherscrn')
-        return
         // console.log('currentscreenpublish');
         storedData.data.view = storedData.data.view || 'bar';
         this.dataToStd.question = storedData.data.question;
@@ -971,46 +975,39 @@
        * @param {*} id
        * onClick event handler of Save button and used inside saveNdPublish() func 
        */
-       etSave(qIndex, pollType, id) {
+      etSave(qIndex, pollType) {
         const flagStatus = virtualclass.poll.isBlank();
         if (!flagStatus) return 0;
-
-        const isEdited = (typeof qIndex !== 'undefined')
-
-
+        
         // hide modal
-        const btn = document.getElementById('etSave');
-        btn.setAttribute('data-dismiss', 'modal');
+        // const btn = document.getElementById('etSave');
+        // btn.setAttribute('data-dismiss', 'modal');
 
-        // save edited or new poll
-        if (isEdited) {
-          const originalPoll = (pollType === 'course') ? virtualclass.poll.coursePoll[qIndex] : virtualclass.poll.sitePoll[qIndex];
-          const editedPoll = virtualclass.poll.getEditedPoll(originalPoll)
+        const inputPoll = virtualclass.poll.getPollInputs()
+        const pollData = virtualclass.poll[`${pollType}Poll`][qIndex]
+        const valuesMatched = (JSON.stringify(pollData.questiontext) === JSON.stringify(inputPoll.questiontext) && JSON.stringify(pollData.options) === JSON.stringify(inputPoll.options))
 
-          virtualclass.poll.interfaceToEdit(editedPoll, pollType, qIndex);
-        } else {
-          const flag = virtualclass.poll.newPollSave('undefined', pollType);
-          if (!flag) {
-            return 0;
-          }
-        }
-        if (id === 'etSave') {
+        if (valuesMatched) {
           virtualclass.modal.removeModal();
+          return
         }
-        return 1;
+        else {
+          inputPoll.questionid = pollData.questionid;
+          virtualclass.poll.interfaceToEdit(inputPoll, pollType, qIndex);
+        }
+        
+        virtualclass.modal.removeModal();
       },
       closePoll(pollType) {
         const message = virtualclass.lang.getString('pclose');
         virtualclass.popup.confirmInput(message, virtualclass.poll.askConfirmClose, 'close', pollType);
       },
 
-      getEditedPoll(originalPoll) {
-        
+      getPollInputs() {
         const questionElem = document.getElementById('q');
         const optionElems = document.querySelector('#optsTxCont').querySelectorAll('#virtualclassCont #optsTxCont .opt');
 
         return {
-          questionid: originalPoll.questionid,
           questiontext: questionElem.value,
           options: [...optionElems].reduce((accumulator, elem, idx) => {
             accumulator[idx + 1] = elem.value
@@ -1030,45 +1027,15 @@
        * @param {*} pollType
        * prepares data to save a new poll 
        */
-      newPollSave(index, pollType) {
-        let category = 0;
-        const item = {};
-        const option = [];
-        const flag = virtualclass.poll.isBlank();
-        let n;
-        if (!flag) {
-          return 0;
-        }
-        const optsCont = document.getElementById('optsTxCont');
-        const opts = optsCont.querySelectorAll('#virtualclassCont #optsTxCont .opt');
+      newPollSave() {
+        const isEmpty = virtualclass.poll.isBlank();
+        if (!isEmpty) return
 
-        for (let i = 0; i < opts.length; i++) {
-          option.push(opts[i].value);
-        }
-        const q = document.getElementById('q');
-        item.questiontext = q.value;
-        item.creator = wbUser.name;
-        item.id = wbUser.id;
-        item.options = option;
-        if (pollType === 'course') {
-          // virtualclass.poll.coursePoll.push(item);
-          n = virtualclass.poll.coursePoll.length - 1;
-          category = virtualclass.poll.cmid;
-        } else {
-          // virtualclass.poll.sitePoll.push(item);
-          n = virtualclass.poll.sitePoll.length - 1;
-        }
-        const saveQn = {
-          question: q.value,
-          options: option,
-          action: 'newPollSave',
-          category,
-          copied: false,
-        };
-
-        virtualclass.poll.interfaceToSave(saveQn, category);
-        // virtualclass.poll.forEachPoll(item, n, pollType, creator, wbUser.id)
-        return 1;
+        const inputPoll = virtualclass.poll.getPollInputs()
+        
+        // TODO add promise
+        virtualclass.poll.interfaceToSave(inputPoll);
+        virtualclass.modal.removeModal();
       },
       isBlank() {
         const q = document.getElementById('q');
@@ -1101,78 +1068,55 @@
        * 
        * @param {*} index 
        * @param {*} type 
-       * prepares data to save and publish new poll
+       * publishBtnHandler used in Modal and Edit-Modal
+       * Publishes Poll after Saving or Editing
        */
-      saveNdPublish(index, type) {
-        const flagSatus = virtualclass.poll.isBlank();
-        if (!flagSatus) {
-          return 0;
-        }
-        const pollType = `${type}Poll`;
-        const { length } = virtualclass.poll[pollType];
-        const optsCont = document.getElementById('optsTxCont');
-        const opt = optsCont.querySelectorAll('#virtualclassCont #optsTxCont .opt');
+      publishBtnHandler(index, type) {
 
-        if (typeof index === 'undefined') {
-          const { length } = virtualclass.poll[pollType];
+        const isEmpty = virtualclass.poll.isBlank();
+        if (!isEmpty) return;
+        
 
-          // const obj = virtualclass.poll[pollType];
+        const pollExists = (typeof index !== 'undefined');
+        const handlerMode = pollExists ? 'EDIT' : 'SAVE';
 
-          const question = document.getElementById('q').value;
-          const opts = {};
-          // const optsCont = document.getElementById('optsTxCont');
-          // const opt = optsCont.querySelectorAll('#virtualclassCont #optsTxCont .opt');
-          for (let i = 0; i < opt.length; i++) {
-            opts[i] = opt[i].value;
-          }
-          // datatoStd change
-          const obj1 = {
-            question,
-            options: opts,
+        if (handlerMode === 'EDIT') {
+          // TODO call promise
+          virtualclass.poll.etSave(index, type, true);
+          // on success
+          // run publish promise
+          // handle errors
+          
+        
 
-          };
-          virtualclass.poll.dataToStd.question = obj1.question;
-          virtualclass.poll.dataToStd.options = obj1.options;
-          const setting = true;
-          const flag = virtualclass.poll.newPollSave(length, type, setting);
-          if (flag) {
-            const next = true;
-            virtualclass.poll.pollSetting(type, length, next);
-          }
-        } else {
-          const next = true;
-          const poll = virtualclass.poll[pollType][index];
-          const question = document.getElementById('q').value;
-          poll.question = question;
+        } else if (handlerMode === 'SAVE') {
+          alert("SAVE MODE")
+          // call save promise then publish it
+          
+          // ! USE THIS
+          // virtualclass.poll.newPollSave(type);
 
-          let j = 0;
-          for (let i in poll.options) {
-            poll.options[i] = opt[j].value;
-            j++;
-          }
-          // var obj1 = {
-          //   question,
-          //   options: opts,
-          //
-          // };
-          virtualclass.poll[pollType][index].questiontext = document.getElementById('q').value;
+          if (!true) {
+            // TODO
+            const index = 0
+            virtualclass.poll.pollSetting(type, index, true);
 
-          virtualclass.poll.dataToStd.question = virtualclass.poll[pollType][index].questiontext;
-          virtualclass.poll.dataToStd.options = virtualclass.poll[pollType][index].options;
-          // TODO -> Fix this
-          const flag = virtualclass.poll.etSave(index, type, setting);
-          if (flag) {
-            virtualclass.poll.pollSetting(type, index, next);
+
+
+
+            // TODO check type -> should be variable
+            // data to send
+            const data = {
+              type: 'course',
+              qid: index,
+              pollqnOps: virtualclass.poll.dataToStd,
+            };
+            virtualclass.poll.pollState.currScreen = 'setting';
+            virtualclass.poll.pollState.data = data;
+            
           }
         }
 
-        const data = {
-          type: 'course',
-          qid: index,
-          pollqnOps: virtualclass.poll.dataToStd,
-        };
-        virtualclass.poll.pollState.currScreen = 'setting';
-        virtualclass.poll.pollState.data = data;
       },
       pollCancel() {
         virtualclass.popup.closeElem();
@@ -1215,10 +1159,17 @@
       duplicatePoll(item) {
         // to convert item.options in to an array
 
-        const options = [];
+        let options = [];
         for (const i in item.options) {
           options.push(item.options[i]);
         }
+
+        // TODO check above code
+        options = options.reduce((accumulator, elem, idx) => {
+            accumulator[idx + 1] = elem.value
+            return accumulator;
+        }, {})
+
         const saveQn = {
           question: item.questiontext,
           options,
@@ -1414,8 +1365,6 @@
       },
 
       stdPublish() {
-        alert('published')
-        return
         // console.log('====> Poll publish 2');
         virtualclass.poll.pollState.data = virtualclass.poll.dataRec;
         virtualclass.poll.pollState.timer = virtualclass.poll.newUserTime;
