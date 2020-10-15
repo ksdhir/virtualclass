@@ -19,7 +19,7 @@
         time: {},
       },
       uid: 0,
-      // ? WHY IS THIS USED?
+      // publish poll variables
       currQid: 0,
       currOption: {},
       
@@ -127,7 +127,7 @@
        * @response text  {object}
        * poll interface to save poll in DynamoDB
        */
-      async interfaceToSave(data) {
+      async interfaceToSave(data, toPublish = false) {
         const url = virtualclass.api.poll + "/create";
         
         // prepare poll data for DynamoDB
@@ -144,8 +144,8 @@
 
         try {
           const d = await virtualclass.xhrn.vxhrn.post(url, poll_data)
-          this.addToPollList(poll_data)
-          virtualclass.modal.removeModal();
+          this.addToPollList(poll_data, toPublish)
+          return true
         } catch (e) {
           console.log('Request failed with error ', e)
         }
@@ -158,7 +158,7 @@
        * poll saved in the database and database poll with new option id is returned
        accordingly poll list is updated.
        */
-      async interfaceToEdit(data, pollType, pollIdx) {
+      async interfaceToEdit(data, pollType, pollIdx, toPublish = false) {
         const url = virtualclass.api.poll + "/update";
 
         const poll_data = {
@@ -179,8 +179,7 @@
           // remove from list and add in the end
           const pollList = (pollType === 'course') ? this.coursePoll : this.sitePoll;
           pollList.splice(pollIdx, 1)
-          this.addToPollList(poll_data)
-          virtualclass.modal.removeModal();
+          this.addToPollList(poll_data, toPublish)
           return true
         } catch (e) {
           console.log('Request failed with error ', e)
@@ -194,7 +193,7 @@
        *
        * poll list is updated
        */
-      addToPollList(content) {
+      addToPollList(content, toPublish) {
         const poll_data = {
           questionid: content.pollUUID,
           createdby: content.teacherID,
@@ -203,27 +202,13 @@
           creatorname: content.teacherName,
         };
 
-        // alert('addToPollList')
-        // const { options } = content;
-        // const obj = {};
-        // const optObj = {};
-
-        // options.forEach((ob) => {
-        //   const temp = {};
-        //   temp.id = ob.id;
-        //   optObj[ob.id] = ob.options;
-        // });
-        // obj.questionid = content.qid;
-        // obj.category = content.category;
-        // obj.createdby = content.createdby;
-        // obj.questiontext = content.question;
-        // obj.creatorname = content.creatorname;
-        // obj.options = optObj;
         
-        // TODO
-        // ? WHY DO WE NEED THIS
+        // needed to prep poll data to publish
         this.currQid = poll_data.questionid;
         this.currOption = poll_data.options;
+        if (!toPublish) {
+          virtualclass.modal.removeModal();
+        }
         
         
         // display polls
@@ -930,7 +915,7 @@
        * @param {*} id
        * onClick event handler of Save button and used inside saveNdPublish() func 
        */
-      async etSave(qIndex, pollType) {
+      async etSave(qIndex, pollType, id, toPublish = false) {
         const flagStatus = virtualclass.poll.isBlank();
         if (!flagStatus) throw new Error("Please fill values");
         
@@ -943,12 +928,16 @@
         const valuesMatched = (JSON.stringify(pollData.questiontext) === JSON.stringify(inputPoll.questiontext) && JSON.stringify(pollData.options) === JSON.stringify(inputPoll.options))
 
         if (valuesMatched) {
-          virtualclass.modal.removeModal();
-          return true
+          if (!toPublish) virtualclass.modal.removeModal()
+          else {
+            virtualclass.poll.currQid = pollData.questionid;
+            virtualclass.poll.currOption = pollData.options;
+          }
+          return false
         }
         else {
           inputPoll.questionid = pollData.questionid;
-          return virtualclass.poll.interfaceToEdit(inputPoll, pollType, qIndex);
+          return virtualclass.poll.interfaceToEdit(inputPoll, pollType, qIndex, toPublish);
         }
       },
       closePoll(pollType) {
@@ -980,11 +969,11 @@
        * @param {*} pollType
        * prepares data to save a new poll 
        */
-      async newPollSave() {
+      async newPollSave(qIndex, pollType, id, toPublish = false) {
         const isEmpty = virtualclass.poll.isBlank();
         if (!isEmpty) throw new Error("Poll should not be empty")
         const inputPoll = virtualclass.poll.getPollInputs()
-        return virtualclass.poll.interfaceToSave(inputPoll);
+        return virtualclass.poll.interfaceToSave(inputPoll, toPublish);
         
       },
       isBlank() {
@@ -1024,43 +1013,18 @@
       publishBtnHandler(index, type) {
         const isEmpty = virtualclass.poll.isBlank();
         if (!isEmpty) return;
-        
 
         const pollExists = (typeof index !== 'undefined');
+        const pollIndex = (typeof index !== 'undefined') ? index : virtualclass.poll[`${type}Poll`].length;
         const handlerMode = pollExists ? 'EDIT' : 'SAVE';
 
-        if (handlerMode === 'EDIT') {
-
-          virtualclass.poll.etSave(index, type, true)
-            .then(value => {
-              console.log(value)
-              // call publish api
-            }).catch(error => {
-            console.log(error)
-          })        
-
-        } else if (handlerMode === 'SAVE') {
-          
-          virtualclass.poll.newPollSave(type)
-            .then(value => {
-              // call publish api
-            }).catch(error => {
-              console.log(error)
-          })
-
-
-
-
-          if (!true) {
-            // TODO
-            const index = 0
-            virtualclass.poll.pollSetting(type, index, true);
-
-
-
-
-            // TODO check type -> should be variable
-            // data to send
+        // Store Handler
+        const handler = handlerMode === 'SAVE' ? virtualclass.poll.newPollSave(type, 0, 0, true) : virtualclass.poll.etSave(index, type, 0, true)
+        handler
+          .then(response => {
+            if (response) alert("Poll Saved");
+            // Apply setting and publish poll
+            virtualclass.poll.pollSetting(type, pollIndex, true);
             const data = {
               type: 'course',
               qid: index,
@@ -1068,9 +1032,8 @@
             };
             virtualclass.poll.pollState.currScreen = 'setting';
             virtualclass.poll.pollState.data = data;
-            
-          }
-        }
+          })
+          .catch(e => console.log(e));
 
       },
       pollCancel() {
@@ -1929,6 +1892,8 @@
           pollType,
 
         };
+
+        debugger
 
         if (typeof virtualclass.poll.afterReload !== 'undefined') {
           data.newTime = virtualclass.poll.afterReload;
