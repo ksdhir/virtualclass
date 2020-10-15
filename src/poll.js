@@ -127,7 +127,7 @@
        * @response text  {object}
        * poll interface to save poll in DynamoDB
        */
-      interfaceToSave(data) {
+      async interfaceToSave(data) {
         const url = virtualclass.api.poll + "/create";
         
         // prepare poll data for DynamoDB
@@ -142,61 +142,13 @@
           "teacherName": virtualclass.gObj.uName
         }
 
-        /*data.options.reduce((accumulator, currentValue, idx) => {
-              accumulator[idx + 1] = currentValue;
-              return accumulator;
-            }, {})
-        */
-
-        virtualclass.xhrn.vxhrn.post(url, poll_data)
-          .then(x => {
-            alert("Poll Saved")
-            this.addToPollList(poll_data)
-          })
-          .catch(e => console.log('Request failed with error ', e))
-
-        // const formData = new FormData();
-        // formData.append('dataToSave', JSON.stringify(data));
-        // formData.append('user', virtualclass.gObj.uid);
-        // // TODO Handle more situations
-        // virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_save`, formData).then((msg) => {
-        //   console.log(msg)
-        //   const getContent = msg.data;
-        //   const { options } = getContent;
-        //   const obj = {};
-        //   const optObj = {};
-        //   options.forEach((obj) => {
-        //     const temp = {};
-        //     temp.id = obj.optid;
-        //     temp.options = obj.options;
-        //     optObj[obj.optid] = temp.options;
-        //   });
-        //   //                    virtualclass.poll.currQid = getContent.qid;
-        //   //                    virtualclass.poll.currOption = optObj;
-        //   // TODO handle this ->
-        //   if (!getContent.copied) {
-        //     that.addToPollList(getContent);
-        //     // that.currQid = getContent.qid;
-        //     // that.currOption = optObj;
-        //   } else {
-        //     alert('hello world')
-        //     debugger
-        //     getContent.options = optObj;
-        //     obj.questionid = getContent.qid;
-        //     obj.category = getContent.category;
-        //     obj.createdby = getContent.createdby;
-        //     obj.questiontext = getContent.question;
-        //     obj.creatorname = getContent.creatorname;
-        //     obj.options = getContent.options;
-        //     that.publishPoll(obj);
-        //     that.interfaceToFetchList(obj.category);
-        //     that.currQid = getContent.qid;
-        //     that.currOption = optObj;
-        //   }
-        // })
-        //   .catch((error) => {
-        //     console.error('Request failed with error ', error);
-        //   });
+        try {
+          const d = await virtualclass.xhrn.vxhrn.post(url, poll_data)
+          this.addToPollList(poll_data)
+          virtualclass.modal.removeModal();
+        } catch (e) {
+          console.log('Request failed with error ', e)
+        }
       },
       /**
        *
@@ -1028,15 +980,12 @@
        * @param {*} pollType
        * prepares data to save a new poll 
        */
-      newPollSave() {
+      async newPollSave() {
         const isEmpty = virtualclass.poll.isBlank();
-        if (!isEmpty) return
-
+        if (!isEmpty) throw new Error("Poll should not be empty")
         const inputPoll = virtualclass.poll.getPollInputs()
+        return virtualclass.poll.interfaceToSave(inputPoll);
         
-        // TODO add promise
-        virtualclass.poll.interfaceToSave(inputPoll);
-        virtualclass.modal.removeModal();
       },
       isBlank() {
         const q = document.getElementById('q');
@@ -1091,11 +1040,16 @@
           })        
 
         } else if (handlerMode === 'SAVE') {
-          alert("SAVE MODE")
-          // call save promise then publish it
           
-          // ! USE THIS
-          // virtualclass.poll.newPollSave(type);
+          virtualclass.poll.newPollSave(type)
+            .then(value => {
+              // call publish api
+            }).catch(error => {
+              console.log(error)
+          })
+
+
+
 
           if (!true) {
             // TODO
