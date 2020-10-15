@@ -206,8 +206,7 @@
        * poll saved in the database and database poll with new option id is returned
        accordingly poll list is updated.
        */
-      interfaceToEdit(data, pollType, pollIdx) {
-
+      async interfaceToEdit(data, pollType, pollIdx) {
         const url = virtualclass.api.poll + "/update";
 
         const poll_data = {
@@ -220,17 +219,21 @@
           "teacherID": data.createdby,
           "teacherName": data.creatorname
         }
-        
-        virtualclass.xhrn.vxhrn.post(url, poll_data)
-          .then(x => {
-            alert("Poll Updated")
-            // remove from list and add in the end
-            const pollList = (pollType === 'course') ? this.coursePoll : this.sitePoll;
-            pollList.splice(pollIdx, 1)
-            this.addToPollList(poll_data)
-          })
-          .catch(e => console.log('Request failed with error ', e))
-        
+
+
+        try {
+          const d = await virtualclass.xhrn.vxhrn.post(url, poll_data)
+          alert("Poll Updated")
+          // remove from list and add in the end
+          const pollList = (pollType === 'course') ? this.coursePoll : this.sitePoll;
+          pollList.splice(pollIdx, 1)
+          this.addToPollList(poll_data)
+          virtualclass.modal.removeModal();
+          return true
+        } catch (e) {
+          console.log('Request failed with error ', e)
+          throw new Error("Error!")
+        }
       },
 
       /**
@@ -975,9 +978,9 @@
        * @param {*} id
        * onClick event handler of Save button and used inside saveNdPublish() func 
        */
-      etSave(qIndex, pollType) {
+      async etSave(qIndex, pollType) {
         const flagStatus = virtualclass.poll.isBlank();
-        if (!flagStatus) return 0;
+        if (!flagStatus) throw new Error("Please fill values");
         
         // hide modal
         // const btn = document.getElementById('etSave');
@@ -989,14 +992,12 @@
 
         if (valuesMatched) {
           virtualclass.modal.removeModal();
-          return
+          return true
         }
         else {
           inputPoll.questionid = pollData.questionid;
-          virtualclass.poll.interfaceToEdit(inputPoll, pollType, qIndex);
+          return virtualclass.poll.interfaceToEdit(inputPoll, pollType, qIndex);
         }
-        
-        virtualclass.modal.removeModal();
       },
       closePoll(pollType) {
         const message = virtualclass.lang.getString('pclose');
@@ -1072,7 +1073,6 @@
        * Publishes Poll after Saving or Editing
        */
       publishBtnHandler(index, type) {
-
         const isEmpty = virtualclass.poll.isBlank();
         if (!isEmpty) return;
         
@@ -1081,13 +1081,14 @@
         const handlerMode = pollExists ? 'EDIT' : 'SAVE';
 
         if (handlerMode === 'EDIT') {
-          // TODO call promise
-          virtualclass.poll.etSave(index, type, true);
-          // on success
-          // run publish promise
-          // handle errors
-          
-        
+
+          virtualclass.poll.etSave(index, type, true)
+            .then(value => {
+              console.log(value)
+              // call publish api
+            }).catch(error => {
+            console.log(error)
+          })        
 
         } else if (handlerMode === 'SAVE') {
           alert("SAVE MODE")
