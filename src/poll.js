@@ -175,7 +175,6 @@
 
         try {
           const d = await virtualclass.xhrn.vxhrn.post(url, poll_data)
-          alert("Poll Updated")
           // remove from list and add in the end
           const pollList = (pollType === 'course') ? this.coursePoll : this.sitePoll;
           pollList.splice(pollIdx, 1)
@@ -203,9 +202,10 @@
         };
 
         
-        // needed to prep poll data to publish
-        this.currQid = poll_data.questionid;
-        this.currOption = poll_data.options;
+        // // needed to prep poll data to publish
+        // this.currQid = poll_data.questionid;
+        // this.currOption = poll_data.options;
+
         if (!toPublish) {
           virtualclass.modal.removeModal();
         }
@@ -265,7 +265,8 @@
           });
       },
       interfaceToSaveResult(data) {
-        alert('pending')
+        alert('save result now')
+        console.log(data)
         return
         const that = this;
         const formData = new FormData();
@@ -929,10 +930,11 @@
 
         if (valuesMatched) {
           if (!toPublish) virtualclass.modal.removeModal()
-          else {
-            virtualclass.poll.currQid = pollData.questionid;
-            virtualclass.poll.currOption = pollData.options;
-          }
+          // else {
+          //   // TODO UGLY HACK -> could release bugs
+          //   virtualclass.poll.currQid = pollData.questionid;
+          //   virtualclass.poll.currOption = pollData.options;
+          // }
           return false
         }
         else {
@@ -1015,7 +1017,7 @@
         if (!isEmpty) return;
 
         const pollExists = (typeof index !== 'undefined');
-        const pollIndex = (typeof index !== 'undefined') ? index : virtualclass.poll[`${type}Poll`].length;
+        // const pollIndex = (typeof index !== 'undefined') ? index : virtualclass.poll[`${type}Poll`].length;
         const handlerMode = pollExists ? 'EDIT' : 'SAVE';
 
         // Store Handler
@@ -1023,15 +1025,32 @@
         handler
           .then(response => {
             if (response) alert("Poll Saved");
+            const pollIndex = response ? virtualclass.poll[`${type}Poll`].length - 1 : index;
+
             // Apply setting and publish poll
+            const pollData = virtualclass.poll[`${type}Poll`][pollIndex]
+            
+            // update current values
+            virtualclass.poll.currQid = pollData.questionid;
+            virtualclass.poll.currOption = pollData.options;
+
+            // update data to send
+            virtualclass.poll.dataToStd.question = pollData.questiontext
+            virtualclass.poll.dataToStd.options = pollData.options
+            virtualclass.poll.dataToStd.qId = pollData.qId
+
+
             virtualclass.poll.pollSetting(type, pollIndex, true);
+            // ! ALERT -> here qid is Question Index not UUID
+            // TODO check -> changed values type and qId
             const data = {
-              type: 'course',
-              qid: index,
+              type: type,
+              qid: pollIndex,
               pollqnOps: virtualclass.poll.dataToStd,
             };
             virtualclass.poll.pollState.currScreen = 'setting';
             virtualclass.poll.pollState.data = data;
+
           })
           .catch(e => console.log(e));
 
@@ -1892,8 +1911,6 @@
           pollType,
 
         };
-
-        debugger
 
         if (typeof virtualclass.poll.afterReload !== 'undefined') {
           data.newTime = virtualclass.poll.afterReload;
