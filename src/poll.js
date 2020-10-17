@@ -267,19 +267,28 @@
       interfaceToSaveResult(data) {
         alert('save result now')
         console.log(data)
-        return
-        const that = this;
-        const formData = new FormData();
-        formData.append('saveResult', JSON.stringify(data));
-        formData.append('user', virtualclass.gObj.uid);
-        virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_result`, formData).then((msg) => {
-          if (msg.data !== '' || (msg.statusText === 'OK' && msg.data === 0)) {
-            that.interfaceToFetchList(msg.data);
-          }
-        })
-          .catch((error) => {
-            console.error('Request failed with error ', error);
-          });
+        const url = virtualclass.api.poll + "/saveattempts";
+        
+        const sessionID = virtualclass.gObj.currentSession
+        if(typeof sessionID !== "undefined") throw new Error("session not found")
+
+        const result_data = {
+          "pollUUID": data.qid,
+          "pollData": {
+            "question": data.question || data.questiontext,
+            "options": data.options
+          },
+          "teacherID": virtualclass.gObj.uid,
+          "teacherName": virtualclass.gObj.uName,
+          "pollAttempts": data.list,
+          "sessionID": sessionID
+        }
+
+        virtualclass.xhrn.vxhrn.post(url, result_data)
+          .then(d => {
+            console.log(d)
+            alert('Poll Result Saved')
+        }).catch(e => console.error('Request failed with error ', e))
       },
 
 
@@ -516,6 +525,8 @@
             virtualclass.poll.resultToStorage();
             const saveResult = {
               qid: virtualclass.poll.dataToStd.qId,
+              options: virtualclass.poll.dataToStd.options,
+              question: virtualclass.poll.dataToStd.question,
               list: virtualclass.poll.list,
             };
             virtualclass.poll.interfaceToSaveResult(saveResult);
@@ -1229,6 +1240,8 @@
           virtualclass.poll.UI.pollClosedUI();
           const saveResult = {
             qid: virtualclass.poll.dataToStd.qId,
+            options: virtualclass.poll.dataToStd.options,
+            question: virtualclass.poll.dataToStd.question,
             list: virtualclass.poll.list,
           };
           virtualclass.poll.interfaceToSaveResult(saveResult);
@@ -1568,6 +1581,8 @@
           if (virtualclass.poll.timer) {
             const saveResult = {
               qid: virtualclass.poll.dataToStd.qId,
+              options: virtualclass.poll.dataToStd.options,
+              question: virtualclass.poll.dataToStd.question,
               list: virtualclass.poll.list,
             };
             virtualclass.poll.interfaceToSaveResult(saveResult);
@@ -1965,6 +1980,8 @@
         virtualclass.poll.count[response] = virtualclass.poll.count[response] + 1;
         obj[fromUser.userid] = response;
         obj.username = fromUser.name;
+        obj.response = response
+        obj.userid = fromUser.userid
         virtualclass.poll.list.push(obj);
         if (virtualclass.poll.currResultView === 'bar') {
           virtualclass.poll.showGraph();
