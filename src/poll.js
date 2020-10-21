@@ -143,7 +143,8 @@
         }
 
         try {
-          const d = await virtualclass.xhrn.vxhrn.post(url, poll_data)
+          const { data } = await virtualclass.xhrn.vxhrn.post(url, poll_data)
+          if (data.statusCode !== 200) throw new Error('Request failed!')
           this.addToPollList(poll_data, toPublish)
           return true
         } catch (e) {
@@ -174,7 +175,8 @@
 
 
         try {
-          const d = await virtualclass.xhrn.vxhrn.post(url, poll_data)
+          const { data } = await virtualclass.xhrn.vxhrn.post(url, poll_data)
+          if (data.statusCode !== 200) throw new Error('Request failed!')
           // remove from list and add in the end
           const pollList = (pollType === 'course') ? this.coursePoll : this.sitePoll;
           pollList.splice(pollIdx, 1)
@@ -253,24 +255,12 @@
           this.displaysitePollList()
         }
       },
-      interfaceToDelOption(optionId) {
-        const formData = new FormData();
-        formData.append('id', JSON.stringify(optionId));
-        formData.append('user', virtualclass.gObj.uid);
-        virtualclass.xhr.vxhr.post(`${window.webapi}&methodname=poll_option_drop`, formData).then(() => {
-          // nothing to do
-        })
-          .catch((error) => {
-            console.error('Request failed with error ', error);
-          });
-      },
       interfaceToSaveResult(data) {
-        alert('save result now')
-        console.log(data)
         const url = virtualclass.api.poll + "/saveattempts";
-        
         const sessionID = virtualclass.gObj.currentSession
-        if(typeof sessionID !== "undefined") throw new Error("session not found")
+        console.log(sessionID)
+
+        if(typeof sessionID === "undefined") throw new Error("session not found")
 
         const result_data = {
           "pollUUID": data.qid,
@@ -283,10 +273,9 @@
           "pollAttempts": data.list,
           "sessionID": sessionID
         }
-
         virtualclass.xhrn.vxhrn.post(url, result_data)
-          .then(d => {
-            console.log(d)
+          .then( ({data}) => {
+            if (data.statusCode !== 200) throw new Error('Request failed!')
             alert('Poll Result Saved')
         }).catch(e => console.error('Request failed with error ', e))
       },
@@ -1081,14 +1070,8 @@
       },
       //* *
       removeOption(pollType, qIndex, y) {
-        const optionId = y.replace('remove', '');
         const e = document.getElementById(y);
         e.parentNode.parentNode.removeChild(e.parentNode);
-        const poll = (pollType === 'course') ? virtualclass.poll.coursePoll[qIndex] : virtualclass.poll.sitePoll[qIndex];
-        if (typeof poll !== 'undefined') {
-          delete poll.options[optionId];
-          virtualclass.poll.interfaceToDelOption(optionId);
-        }
       },
       publishHandler(item, type, index) {
         const mszbox = document.getElementById('mszBoxPoll');
